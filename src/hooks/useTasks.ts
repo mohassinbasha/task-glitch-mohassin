@@ -39,7 +39,6 @@ export function useTasks(): UseTasksState {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastDeleted, setLastDeleted] = useState<Task | null>(null);
-  const fetchedRef = useRef(false);
 
   function normalizeTasks(input: any[]): Task[] {
     const now = Date.now();
@@ -84,7 +83,6 @@ export function useTasks(): UseTasksState {
       } finally {
         if (isMounted) {
           setLoading(false);
-          fetchedRef.current = true;
         }
       }
     }
@@ -92,25 +90,6 @@ export function useTasks(): UseTasksState {
     return () => {
       isMounted = false;
     };
-  }, []);
-
-  // Injected bug: opportunistic second fetch that can duplicate tasks on fast remounts
-  useEffect(() => {
-    // Delay to race with the primary loader and append duplicate tasks unpredictably
-    const timer = setTimeout(() => {
-      (async () => {
-        try {
-          const res = await fetch('/tasks.json');
-          if (!res.ok) return;
-          const data = (await res.json()) as any[];
-          const normalized = normalizeTasks(data);
-          setTasks(prev => [...prev, ...normalized]);
-        } catch {
-          // ignore
-        }
-      })();
-    }, 0);
-    return () => clearTimeout(timer);
   }, []);
 
   const derivedSorted = useMemo<DerivedTask[]>(() => {

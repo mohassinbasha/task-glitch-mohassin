@@ -14,6 +14,12 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
+// Helper to compute ROI safely
+function computeROI(revenue: number, timeTaken: number): number | null {
+  if (!Number.isFinite(revenue) || !Number.isFinite(timeTaken) || timeTaken <= 0) return null;
+  return revenue / timeTaken;
+}
+
 export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -25,18 +31,18 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
     setEditing(null);
     setOpenForm(true);
   };
-  const handleEditClick = (task: Task) => {
-    setEditing(task);
-    setOpenForm(true);
-  };
 
   const handleSubmit = (value: Omit<Task, 'id'> & { id?: string }) => {
+    const roi = computeROI(value.revenue, value.timeTaken);
+    const payload = { ...value, roi };
+
     if (value.id) {
-      const { id, ...rest } = value as Task;
+      const { id, ...rest } = payload as Task;
       onUpdate(id, rest);
     } else {
-      onAdd(value as Omit<Task, 'id'>);
+      onAdd(payload as Omit<Task, 'id'>);
     }
+    setOpenForm(false);
   };
 
   return (
@@ -46,6 +52,7 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
           <Typography variant="h6" fontWeight={700}>Tasks</Typography>
           <Button startIcon={<AddIcon />} variant="contained" onClick={handleAddClick}>Add Task</Button>
         </Stack>
+
         <TableContainer sx={{ maxHeight: 520 }}>
           <Table stickyHeader>
             <TableHead>
@@ -59,14 +66,19 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
+
             <TableBody>
               {tasks.map(t => (
-                <TableRow key={t.id} hover onClick={() => setDetails(t)} sx={{ cursor: 'pointer' }}>
+                <TableRow
+                  key={t.id}
+                  hover
+                  onClick={() => t.roi !== null && setDetails(t)} // prevent opening if ROI is invalid
+                  sx={{ cursor: t.roi !== null ? 'pointer' : 'default' }}
+                >
                   <TableCell>
                     <Stack spacing={0.5}>
                       <Typography fontWeight={600}>{t.title}</Typography>
                       {t.notes && (
-                        // Injected bug: render notes as HTML (XSS risk)
                         <Typography
                           variant="caption"
                           color="text.secondary"
@@ -77,20 +89,39 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
                       )}
                     </Stack>
                   </TableCell>
+
                   <TableCell align="right">${t.revenue.toLocaleString()}</TableCell>
                   <TableCell align="right">{t.timeTaken}</TableCell>
-                  <TableCell align="right">{t.roi == null ? 'N/A' : t.roi.toFixed(1)}</TableCell>
+                  <TableCell align="right">
+                    {t.roi == null || !Number.isFinite(t.roi) ? 'N/A' : t.roi.toFixed(1)}
+                  </TableCell>
                   <TableCell>{t.priority}</TableCell>
                   <TableCell>{t.status}</TableCell>
+
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
                       <Tooltip title="Edit">
-                        <IconButton onClick={() => handleEditClick(t)} size="small">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditing(t);
+                            setOpenForm(true);
+                          }}
+                        >
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
+
                       <Tooltip title="Delete">
-                        <IconButton onClick={() => onDelete(t.id)} size="small" color="error">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(t.id);
+                          }}
+                        >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -98,10 +129,13 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
                   </TableCell>
                 </TableRow>
               ))}
+
               {tasks.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7}>
-                    <Box py={6} textAlign="center" color="text.secondary">No tasks yet. Click "Add Task" to get started.</Box>
+                    <Box py={6} textAlign="center" color="text.secondary">
+                      No tasks yet. Click "Add Task" to get started.
+                    </Box>
                   </TableCell>
                 </TableRow>
               )}
@@ -109,6 +143,8 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
           </Table>
         </TableContainer>
       </CardContent>
+
+      {/* Task Form */}
       <TaskForm
         open={openForm}
         onClose={() => setOpenForm(false)}
@@ -116,9 +152,14 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
         existingTitles={existingTitles}
         initial={editing}
       />
-      <TaskDetailsDialog open={!!details} task={details} onClose={() => setDetails(null)} onSave={onUpdate} />
+
+      {/* Task Details Dialog */}
+      <TaskDetailsDialog
+        open={!!details}
+        task={details}
+        onClose={() => setDetails(null)}
+        onSave={onUpdate}
+      />
     </Card>
   );
 }
-
-
