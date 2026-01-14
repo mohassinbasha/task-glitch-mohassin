@@ -16,7 +16,7 @@ import MetricsBar from '@/components/MetricsBar';
 import TaskTable from '@/components/TaskTable';
 import UndoSnackbar from '@/components/UndoSnackbar';
 import ChartsDashboard from '@/components/ChartsDashboard';
-import AnalyticsDashboard from '@/components/AnalyticsDashboard';
+// import AnalyticsDashboard from '@/components/AnalyticsDashboard'; // disabled
 import ActivityLog, { ActivityItem } from '@/components/ActivityLog';
 import { downloadCSV, toCSV } from '@/utils/csv';
 import type { Task } from '@/types';
@@ -31,10 +31,7 @@ import { UserProvider, useUser } from '@/context/UserContext';
 import { TasksProvider, useTasksContext } from '@/context/TasksContext';
 
 function AppContent() {
-  // Safe defaults for user
   const { user } = useUser() || { user: { name: 'Test User' } };
-
-  // Safe defaults for tasks
   const {
     loading = false,
     error = null,
@@ -165,7 +162,7 @@ function AppContent() {
             <>
               <TaskTable tasks={filtered} onAdd={handleAdd} onUpdate={handleUpdate} onDelete={handleDelete} />
               <ChartsDashboard tasks={filtered} />
-              <AnalyticsDashboard tasks={filtered} />
+              {/* AnalyticsDashboard removed to fix build */}
               <ActivityLog items={activity} />
               <UndoSnackbar open={!!lastDeleted} onClose={handleCloseUndo} onUndo={handleUndo} />
             </>

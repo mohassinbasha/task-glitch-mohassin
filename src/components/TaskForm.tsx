@@ -76,6 +76,7 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
       priority: ((priority || 'Medium') as Priority),
       status: ((status || 'Todo') as Status),
       notes: notes.trim() || undefined,
+      createdAt: initial?.createdAt || new Date().toISOString(), // ✅ added to fix TS error
       ...(initial ? { id: initial.id } : {}),
     };
     onSubmit(payload);
@@ -146,5 +147,3 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
     </Dialog>
   );
 }
-
-

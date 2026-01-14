@@ -96,7 +96,9 @@ export function computeThroughputByWeek(tasks: ReadonlyArray<Task>) {
   tasks
     .filter(t => t.status === 'Done')
     .forEach(t => {
-      const date = new Date(t.completedAt ?? t.updatedAt ?? t.createdAt);
+      // ✅ Only use existing fields: completedAt or createdAt
+      const dateStr = t.completedAt ?? t.createdAt;
+      const date = new Date(dateStr);
       if (isNaN(date.getTime())) return;
       const startOfYear = new Date(date.getFullYear(), 0, 1);
       const weekNum = Math.ceil((((date.getTime() - startOfYear.getTime()) / 86400000) + startOfYear.getDay() + 1) / 7);
